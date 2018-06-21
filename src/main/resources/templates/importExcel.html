@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>采集点来源分类</title>
+
+    <!-- Bootstrap core CSS -->
+    <link rel="stylesheet" href="../../static/css/btstrapcss/bootstrap.min.css" th:href="@{/css/btstrapcss/bootstrap.min.css}"/>
+
+    <script src="/js/jquery-1.11.1.min.js" th:src="@{/js/jquery-1.11.1.min.js}"></script>
+    <script src="/js/bootstrap.min.js" th:src="@{/js/bootstrap.min.js}"></script>
+    <style>
+        .groupInputPersonSet{width: 60px;height:40px; position: absolute;top:-6px;left: -30px;opacity: 0; filter:alpha(opacity=0);}
+    </style>
+</head>
+<body>
+    <!-- nav bar -->
+    <div class="container">
+        <nav class="navbar navbar-inverse" role="navigation">
+            <div class="container-fluid">
+                <div class="navbar-header">
+                    <a class="navbar-brand" href="/">采集点来源分类</a>
+                </div>
+                <div>
+                    <ul class="nav navbar-nav">
+                        <li class="active"><a href="/app/list">app</a></li>
+                        <li><a href="/weixin/list">微信</a></li>
+                        <li><a href="/weibo/list">微博</a></li>
+                        <li><a href="/website/list">网站</a></li>
+                        <li><a href="/epaper/list">数字报</a></li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
+    </div>
+    <div class="container">
+        <div class="panel panel-primary">
+            <div class="panel-heading">
+                <div class="panel-title">新增app来源分类</div>
+            </div>
+            <div class="panel-body">
+                <!--TODO 下面重定向的地址根据需要进行修改-->
+                <form action="/excel/findByWebChannel" method="POST" enctype="multipart/form-data">
+                    <div class="form-group">
+                        <div class="col-xs-2">
+                            <div class="form-group">
+                                <select class="selectpicker form-control" name="dataUser">
+                                    <option value="mlf">媒立方</option>
+                                    <option value="ddgz">当代贵州</option>
+                                </select>
+                            </div>
+                        </div>
+                        <!--<div class="col-md-4">-->
+                            <!--<input type="file" class="form-control" accept=".xls,.xlsx" name="excelFile" />-->
+                    </div>
+                    <div class="form-group input-group col-xs-3 ">
+                        <input id="docPath" type="text" class="form-control"/>
+                        <span id="scan" style="position: relative" class="btn btn-primary input-group-addon">
+                                浏览<input id="path" class="groupInputPersonSet" type="file" name="excelFile"/>
+                            </span>
+                    </div>
+                    <div class="form-group">
+                        <div class="col-xs-offset-2 col-xs-3">
+                            <button type="submit" class="btn btn-primary">保存</button>
+                            <a href="/app/list" class="btn btn-primary btn-success">取消</a>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</body>
+<script>
+    $("#path").change(function () {
+        $("#docPath").val($(":file").val());
+    });
+</script>
+</html>
