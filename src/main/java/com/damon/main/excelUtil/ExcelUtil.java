@@ -4,10 +4,7 @@ import lombok.Data;
 import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
-import org.apache.poi.ss.usermodel.Cell;
-import org.apache.poi.ss.usermodel.Row;
-import org.apache.poi.ss.usermodel.Sheet;
-import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.stereotype.Component;
@@ -38,6 +35,11 @@ public class ExcelUtil {
 
     private static final String XLSX = "xlsx";
     private static final String XLS = "xls";
+
+    public static boolean isItNullOrEmpty(String obj) {
+        if (obj == null || obj.length() == 0) return true;
+        else return false;
+    }
 
     @Data
     @ToString
@@ -436,8 +438,11 @@ public class ExcelUtil {
                     ExcelColumnAnnotation excelAnnotation = eachField.getAnnotation(ExcelColumnAnnotation.class);
                     if (excelAnnotation == null)
                         continue;
+                    boolean shouldDownload = excelAnnotation.shouldDownload();
+                    boolean isDbField = excelAnnotation.isDbColumn();
+                    if (!shouldDownload || !isDbField) continue;
                     String annoName = excelAnnotation.name();
-                    if (annoName == null || annoName.length() == 0)
+                    if (isItNullOrEmpty(annoName))
                         continue;
                     //如果map中有这个注解值，那就获取value，也就是列数colNum
                     //把当前成员变量的值，写到colNum下标对应的列下的某个单元格
@@ -516,7 +521,15 @@ public class ExcelUtil {
             if (excelAnnotation == null)
                 continue;
             String annoName = excelAnnotation.name();
-            if (annoName == null || annoName.length() == 0)
+            boolean shouldDownload = excelAnnotation.shouldDownload();
+            /**
+             * 实体类中可能有几个属性的注解名称是一致的，例如数据圈，一个是针对excel中的数据圈，
+             * 一个是针对数据库中的数据圈level
+             * 下载的时候，应该是后者level才会有值，因此下面要进行判断该属性是否和数据库相对应
+             */
+            boolean isDbField = excelAnnotation.isDbColumn();
+            if (!shouldDownload || !isDbField) continue;
+            if (isItNullOrEmpty(annoName))
                 continue;
             map.put(annoName,num);
             num++;
@@ -561,6 +574,7 @@ public class ExcelUtil {
         //获取有效单元格数量
         int solidCellNum = firstRow.getPhysicalNumberOfCells();
         Map<Integer,String> colOrderAnnoValueMap = new HashMap<>();
+        Map<String,Boolean> annotationIsRequiredMap = new HashMap<>();
         for (int i = 0; i < solidCellNum; i++) {
             //cell下标从0开始
             Cell eachCell = firstRow.getCell(i);
@@ -571,15 +585,60 @@ public class ExcelUtil {
                 ExcelColumnAnnotation excelAnnotation = eachField.getAnnotation(ExcelColumnAnnotation.class);
                 if (excelAnnotation == null)
                     continue;
+                boolean isExcelCol = excelAnnotation.isExcelColumn();
+                //不是excel中的列，那就跳过
+                if (!isExcelCol) continue;
                 String annotationName = excelAnnotation.name();
+                boolean required = excelAnnotation.required();
+                //不需要重复往map中put
+                if (i == 0)
+                    annotationIsRequiredMap.put(annotationName,required);
                 if (cellValue == null)
                     continue;
-                if (cellValue.equals(annotationName))
+                if (cellValue.equals(annotationName)){
                     colOrderAnnoValueMap.put(i,cellValue);
+                    break;
+                }
             }
         }
+        compareAnnotationListExcelColumns(annotationIsRequiredMap,colOrderAnnoValueMap);
+        colOrderAnnoValueMap = sortMapBykey(colOrderAnnoValueMap);
         entity.setMap(colOrderAnnoValueMap);
         return entity;
+    }
+
+    public static Map sortMapBykey(Map<Integer,String> theMap){
+        Map<Integer,String> treeMap = new TreeMap<>(new MapKeyComparator());
+        treeMap.putAll(theMap);
+        theMap = treeMap;
+        return theMap;
+    }
+
+    static class MapKeyComparator implements Comparator<Integer> {
+        @Override
+        public int compare(Integer first, Integer second) {
+            return first - second;
+        }
+    }
+
+    //如果有Excel有列名和实体类属性不一致，那么就要抛出异常
+    public static void compareAnnotationListExcelColumns(Map<String,Boolean> annotationMap,Map<Integer,String> excelMap) throws Exception {
+        if (annotationMap == null || annotationMap.size() == 0) throw new Exception("实体类没有成员变量或者没有添加注解");
+        if (excelMap == null || excelMap.size() == 0) throw new Exception("Excel第一行没有列名");
+        String missingField = "";
+        boolean isError = false;
+        Set<String> annotationKeys = annotationMap.keySet();
+        for (String key : annotationKeys) {
+            boolean isRequired = annotationMap.get(key);
+            if (isRequired) {
+                if (!excelMap.containsValue(key)) {
+                    isError = true;
+                    missingField += key + ";";
+                }
+            }
+        }
+        if (isError)
+            throw new Exception(String.format("Excel中有列名错误或者缺失，正确的是：%s", missingField));
     }
 
     /**
@@ -590,7 +649,7 @@ public class ExcelUtil {
      * @return
      * @throws Exception
      */
-    public static <T> List<T> mapUploadedExcelToPOJO(MultipartFile file,Class<T> elementType) throws Exception {
+    public static <T> List<T> mapUploadedExcelToPOJO(MultipartFile file, Class<T> elementType) throws Exception {
         ExcelEntity excelEntity = getExcelHeaderFromWorkbook(file,elementType);
         Map<Integer,String> map = excelEntity.getMap();
         Workbook workbook = excelEntity.getWorkbook();
@@ -600,17 +659,36 @@ public class ExcelUtil {
         //获取所有行数
         int rowNum = sheet.getPhysicalNumberOfRows();
         List<T> list = new ArrayList<>();
-        int mapSize = map.size();
+        Set<Integer> mapIndex = map.keySet();
         //数据行从第二行开始，因此下标从1开始
         for (int i = 1; i < rowNum; i++) {
             Row row = sheet.getRow(i);
             //每一行数据就是一个对象
             T pojo = elementType.newInstance();
             Field[] fields = pojo.getClass().getDeclaredFields();
-            //mapSize就是列数，列下标从0开始
-            for (int x = 0; x < mapSize; x++) {
+            /**
+             * 出现过这种情况，map中的key是0,1,2,3,4,5,6,7,8,9,12
+             * 这是因为10,11这两列和实体类属性匹配不上，或者是空白列
+             * 因此应该遍历map的key才行
+             */
+            int blankAmount = 0;
+            for (Integer x : mapIndex) {
+                /**
+                 * 出现过这种情况，当整行都是空的时候，row.getCell获取的单元格反而不是null，当某行有数据，只是个别列是空的，
+                 * 通过row.getCell获取这些单元格的时候得到的是null
+                 */
                 Cell cell = row.getCell(x);
-                if (cell == null) continue;//如果是xlsx文件，这一步就不能少，否则cell.getValue就会异常
+                if (cell == null) {
+                    blankAmount++;
+                    continue;
+                }
+                //有这种情况，行与行之间有空白行，但是不做处理这整一行也会被转成一个对象，只不过所有字段都是null,因此要规避这种现象
+                CellType cellType = cell.getCellTypeEnum();
+                String cellTypeName = cellType.name();
+                if ("BLANK".equals(cellTypeName)) {
+                    blankAmount++;
+                    continue;
+                }
                 String annotationValue = map.get(x);
                 for (int y = 0; y < fields.length; y++) {
                     Field eachField = fields[y];
@@ -618,6 +696,8 @@ public class ExcelUtil {
                     ExcelColumnAnnotation excelAnno = eachField.getAnnotation(ExcelColumnAnnotation.class);
                     if (excelAnno == null)
                         continue;
+                    boolean isExcelCol = excelAnno.isExcelColumn();
+                    if (!isExcelCol) continue;
                     String fieldAnnoName = excelAnno.name();
                     //还要区分单元格值的类型是String还是interger
                     if (annotationValue.equals(fieldAnnoName)){
@@ -625,19 +705,28 @@ public class ExcelUtil {
                         //获取成员变量的类型的简称
                         String fieldType = eachField.getType().getSimpleName();
                         if ("String".equals(fieldType)){
-                            String cellValue = cell.getStringCellValue();
+                            String cellValue;
+                            if ("NUMERIC".equals(cellTypeName))
+                                cellValue = String.valueOf((int) cell.getNumericCellValue());
+                            else cellValue = cell.getStringCellValue();
                             if (cellValue == null) continue;
                             eachField.set(pojo,cellValue);
                         } else if ("Integer".equals(fieldType) ||
                                 "int".equals(fieldType)){
-                            Double cellValue = cell.getNumericCellValue();
+                            Double cellValue;
+                            if ("STRING".equals(cellTypeName))
+                                cellValue = Double.parseDouble(cell.getStringCellValue());
+                            else cellValue = cell.getNumericCellValue();
                             if (cellValue == null) continue;
                             double val = cellValue;
                             int finalVal = (int) val;
                             eachField.set(pojo,finalVal);
                         } else if ("Double".equals(fieldType) ||
                                 "double".equals(fieldType)){
-                            Double cellValue = cell.getNumericCellValue();
+                            Double cellValue;
+                            if ("STRING".equals(cellTypeName))
+                                cellValue = Double.parseDouble(cell.getStringCellValue());
+                            else cellValue = cell.getNumericCellValue();
                             if (cellValue == null) continue;
                             eachField.set(pojo,cellValue);
                         } else if ("Boolean".equals(fieldType) ||
@@ -646,12 +735,13 @@ public class ExcelUtil {
                             if (cellValue == null) continue;
                             eachField.set(pojo,cellValue);
                         }
+                        //equals了，那么就不用再和实体类其它属性比较了
+                        break;
                     }
                 }
-
             }
-            list.add(pojo);
-
+            //如果空字段的数量和map中key的数量一致，那说明是空的对象
+            if (blankAmount < mapIndex.size()) list.add(pojo);
         }
         return list;
     }
