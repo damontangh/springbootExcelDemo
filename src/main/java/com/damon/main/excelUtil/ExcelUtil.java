@@ -649,7 +649,7 @@ public class ExcelUtil {
      * @return
      * @throws Exception
      */
-    public static <T> List<T> mapUploadedExcelToPOJO(MultipartFile file, Class<T> elementType) throws Exception {
+public static <T> List<T> mapUploadedExcelToPOJO(MultipartFile file, Class<T> elementType) throws Exception {
         ExcelEntity excelEntity = getExcelHeaderFromWorkbook(file,elementType);
         Map<Integer,String> map = excelEntity.getMap();
         Workbook workbook = excelEntity.getWorkbook();
@@ -661,8 +661,9 @@ public class ExcelUtil {
         List<T> list = new ArrayList<>();
         Set<Integer> mapIndex = map.keySet();
         //数据行从第二行开始，因此下标从1开始
-        for (int i = 1; i < rowNum; i++) {
+        for (int i = 1; i < (rowNum - 1); i++) {
             Row row = sheet.getRow(i);
+            if (row == null) continue;
             //每一行数据就是一个对象
             T pojo = elementType.newInstance();
             Field[] fields = pojo.getClass().getDeclaredFields();
@@ -710,6 +711,7 @@ public class ExcelUtil {
                                 cellValue = String.valueOf((int) cell.getNumericCellValue());
                             else cellValue = cell.getStringCellValue();
                             if (cellValue == null) continue;
+                            cellValue = cellValue.replaceAll("\n","").trim();
                             eachField.set(pojo,cellValue);
                         } else if ("Integer".equals(fieldType) ||
                                 "int".equals(fieldType)){
