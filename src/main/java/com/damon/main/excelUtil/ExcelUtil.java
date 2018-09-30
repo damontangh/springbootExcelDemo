@@ -1,4 +1,4 @@
-package com.damon.main.excelUtil;
+package com.damon.main.excelUtil
 
 import lombok.Data;
 import lombok.ToString;
@@ -8,7 +8,6 @@ import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.stereotype.Component;
-import org.springframework.util.ResourceUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.*;
@@ -326,8 +325,8 @@ public class ExcelUtil {
      * @throws Exception
      * @author Damon update on January 10th,2018
      */
-public static <T> List<T> mapUploadedExcelToPOJO(MultipartFile file, Class<T> elementType) throws Exception {
-        ExcelEntity excelEntity = getExcelHeaderFromWorkbook(file,elementType);
+    public static <T> List<T> mapExcelToPOJO(String filePath,Class<T> elementType) throws Exception {
+        ExcelEntity excelEntity = getExcelHeader(filePath,elementType);
         Map<Integer,String> map = excelEntity.getMap();
         Workbook workbook = excelEntity.getWorkbook();
         if (workbook == null)
@@ -336,7 +335,7 @@ public static <T> List<T> mapUploadedExcelToPOJO(MultipartFile file, Class<T> el
         //获取所有行数
         int rowNum = sheet.getPhysicalNumberOfRows();
         List<T> list = new ArrayList<>();
-        Set<Integer> mapIndex = map.keySet();
+        int mapSize = map.size();
         //数据行从第二行开始，因此下标从1开始
         for (int i = 1; i < (rowNum - 1); i++) {
             Row row = sheet.getRow(i);
@@ -344,29 +343,10 @@ public static <T> List<T> mapUploadedExcelToPOJO(MultipartFile file, Class<T> el
             //每一行数据就是一个对象
             T pojo = elementType.newInstance();
             Field[] fields = pojo.getClass().getDeclaredFields();
-            /**
-             * 出现过这种情况，map中的key是0,1,2,3,4,5,6,7,8,9,12
-             * 这是因为10,11这两列和实体类属性匹配不上，或者是空白列
-             * 因此应该遍历map的key才行
-             */
-            int blankAmount = 0;
-            for (Integer x : mapIndex) {
-                /**
-                 * 出现过这种情况，当整行都是空的时候，row.getCell获取的单元格反而不是null，当某行有数据，只是个别列是空的，
-                 * 通过row.getCell获取这些单元格的时候得到的是null
-                 */
+            //mapSize就是列数，列下标从0开始
+            for (int x = 0; x < mapSize; x++) {
                 Cell cell = row.getCell(x);
-                if (cell == null) {
-                    blankAmount++;
-                    continue;
-                }
-                //有这种情况，行与行之间有空白行，但是不做处理这整一行也会被转成一个对象，只不过所有字段都是null,因此要规避这种现象
-                CellType cellType = cell.getCellTypeEnum();
-                String cellTypeName = cellType.name();
-                if ("BLANK".equals(cellTypeName)) {
-                    blankAmount++;
-                    continue;
-                }
+                if (cell == null) continue;//如果是xlsx文件，这一步就不能少，否则cell.getValue就会异常
                 String annotationValue = map.get(x);
                 for (int y = 0; y < fields.length; y++) {
                     Field eachField = fields[y];
@@ -374,38 +354,27 @@ public static <T> List<T> mapUploadedExcelToPOJO(MultipartFile file, Class<T> el
                     ExcelColumnAnnotation excelAnno = eachField.getAnnotation(ExcelColumnAnnotation.class);
                     if (excelAnno == null)
                         continue;
-                    boolean isExcelCol = excelAnno.isExcelColumn();
-                    if (!isExcelCol) continue;
                     String fieldAnnoName = excelAnno.name();
                     //还要区分单元格值的类型是String还是interger
                     if (annotationValue.equals(fieldAnnoName)){
                         //这时候，还要判断成员变量的属性是String的还是数值型
                         //获取成员变量的类型的简称
                         String fieldType = eachField.getType().getSimpleName();
+                        //下面开始给对象的成员变量赋值，如果获取单元格的值是null，那就跳过，否则抛null异常
                         if ("String".equals(fieldType)){
-                            String cellValue;
-                            if ("NUMERIC".equals(cellTypeName))
-                                cellValue = String.valueOf((int) cell.getNumericCellValue());
-                            else cellValue = cell.getStringCellValue();
+                            String cellValue = cell.getStringCellValue();
                             if (cellValue == null) continue;
-                            cellValue = cellValue.replaceAll("\n","").trim();
                             eachField.set(pojo,cellValue);
                         } else if ("Integer".equals(fieldType) ||
                                 "int".equals(fieldType)){
-                            Double cellValue;
-                            if ("STRING".equals(cellTypeName))
-                                cellValue = Double.parseDouble(cell.getStringCellValue());
-                            else cellValue = cell.getNumericCellValue();
+                            Double cellValue = cell.getNumericCellValue();
                             if (cellValue == null) continue;
                             double val = cellValue;
                             int finalVal = (int) val;
                             eachField.set(pojo,finalVal);
                         } else if ("Double".equals(fieldType) ||
                                 "double".equals(fieldType)){
-                            Double cellValue;
-                            if ("STRING".equals(cellTypeName))
-                                cellValue = Double.parseDouble(cell.getStringCellValue());
-                            else cellValue = cell.getNumericCellValue();
+                            Double cellValue = cell.getNumericCellValue();
                             if (cellValue == null) continue;
                             eachField.set(pojo,cellValue);
                         } else if ("Boolean".equals(fieldType) ||
@@ -414,13 +383,12 @@ public static <T> List<T> mapUploadedExcelToPOJO(MultipartFile file, Class<T> el
                             if (cellValue == null) continue;
                             eachField.set(pojo,cellValue);
                         }
-                        //equals了，那么就不用再和实体类其它属性比较了
-                        break;
                     }
                 }
+
             }
-            //如果空字段的数量和map中key的数量一致，那说明是空的对象
-            if (blankAmount < mapIndex.size()) list.add(pojo);
+            list.add(pojo);
+
         }
         return list;
     }
@@ -611,6 +579,7 @@ public static <T> List<T> mapUploadedExcelToPOJO(MultipartFile file, Class<T> el
             //cell下标从0开始
             Cell eachCell = firstRow.getCell(i);
             String cellValue = eachCell.getStringCellValue();
+            cellValue = cellValue.replaceAll("\n","").trim();
             for (int y = 0; y < fields.length; y++) {
                 Field eachField = fields[y];
                 eachField.setAccessible(true);
@@ -681,7 +650,7 @@ public static <T> List<T> mapUploadedExcelToPOJO(MultipartFile file, Class<T> el
      * @return
      * @throws Exception
      */
-public static <T> List<T> mapUploadedExcelToPOJO(MultipartFile file, Class<T> elementType) throws Exception {
+    public static <T> List<T> mapUploadedExcelToPOJO(MultipartFile file, Class<T> elementType) throws Exception {
         ExcelEntity excelEntity = getExcelHeaderFromWorkbook(file,elementType);
         Map<Integer,String> map = excelEntity.getMap();
         Workbook workbook = excelEntity.getWorkbook();
