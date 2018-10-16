@@ -337,7 +337,7 @@ public class ExcelUtil {
         List<T> list = new ArrayList<>();
         int mapSize = map.size();
         //数据行从第二行开始，因此下标从1开始
-        for (int i = 1; i < (rowNum - 1); i++) {
+        for (int i = 1; i < rowNum; i++) {
             Row row = sheet.getRow(i);
             if (row == null) continue;
             //每一行数据就是一个对象
@@ -662,7 +662,7 @@ public class ExcelUtil {
         List<T> list = new ArrayList<>();
         Set<Integer> mapIndex = map.keySet();
         //数据行从第二行开始，因此下标从1开始
-        for (int i = 1; i < (rowNum - 1); i++) {
+        for (int i = 1; i < rowNum; i++) {
             Row row = sheet.getRow(i);
             if (row == null) continue;
             //每一行数据就是一个对象
