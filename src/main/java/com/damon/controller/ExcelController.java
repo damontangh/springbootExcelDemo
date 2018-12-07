@@ -1,9 +1,9 @@
-package com.damon.main.controller;
+package com.damon.controller;
 
-import com.damon.main.entity.WebsiteChannel;
-import com.damon.main.excelUtil.ExcelUtil;
-import com.damon.main.excelUtil.Person;
-import com.damon.main.service.ExcelService;
+import com.damon.entity.WebsiteChannel;
+import com.damon.excelUtil.ExcelUtil;
+import com.damon.excelUtil.Person;
+import com.damon.service.ExcelService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -13,7 +13,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.util.List;
 
 

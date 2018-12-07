@@ -1,8 +1,8 @@
-package com.damon.main.startJob;
+package com.damon.startJob;
 
-import com.damon.main.job.CompareWebUrlWithMysql;
-import com.damon.main.job.FindNullOrMultipleData;
-import com.damon.main.job.ModifyLocalExcel;
+import com.damon.job.CompareWebUrlWithMysql;
+import com.damon.job.FindNullOrMultipleData;
+import com.damon.job.ModifyLocalExcel;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.EnableScheduling;

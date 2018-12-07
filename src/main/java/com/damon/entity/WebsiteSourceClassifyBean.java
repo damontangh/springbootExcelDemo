@@ -1,4 +1,4 @@
-package com.damon.main.entity;
+package com.damon.entity;
 
 import lombok.Data;
 

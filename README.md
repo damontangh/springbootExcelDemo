@@ -1,6 +1,7 @@
 # springbootExcelDemo
 
 #### 项目介绍
+配置文件内容置空，包含隐私。
 excel和java对象互相转换的项目
 项目包含前端代码，因此可以在网页上传和下载Excel，支持xls和xlsx格式。
 重点代码在excelUtil包下，

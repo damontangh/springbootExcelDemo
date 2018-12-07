@@ -1,8 +1,8 @@
-package com.damon.main.job;
+package com.damon.job;
 
-import com.damon.main.entity.Website;
-import com.damon.main.entity.WebsiteTemp;
-import com.damon.main.excelUtil.ExcelUtil;
+import com.damon.entity.Website;
+import com.damon.entity.WebsiteTemp;
+import com.damon.excelUtil.ExcelUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 

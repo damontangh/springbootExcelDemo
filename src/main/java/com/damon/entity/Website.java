@@ -1,6 +1,6 @@
-package com.damon.main.entity;
+package com.damon.entity;
 
-import com.damon.main.excelUtil.ExcelColumnAnnotation;
+import com.damon.excelUtil.ExcelColumnAnnotation;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Data;
 import lombok.Getter;

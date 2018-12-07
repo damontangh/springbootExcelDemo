@@ -1,4 +1,4 @@
-package com.damon.main.repository;
+package com.damon.repository;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -32,7 +32,7 @@ import java.util.Map;
 @EnableJpaRepositories(
         entityManagerFactoryRef = "entityManagerPrimary",
         transactionManagerRef = "transactionManagerPrimary",
-        basePackages = "com.damon.main.entity") //TODO 实体类位置要酌情改变
+        basePackages = "com.damon.entity") //TODO 实体类位置要酌情改变
 public class EntityManagerConfig {
     @Autowired
     @Qualifier("primaryDataSource")
@@ -50,7 +50,7 @@ public class EntityManagerConfig {
         return builder
                 .dataSource(primaryDataSource)
                 .properties(getVendorProperties(primaryDataSource))
-                .packages("com.damon.main.entity") //TODO 实体类的位置要酌情变化
+                .packages("com.damon.entity") //TODO 实体类的位置要酌情变化
                 .persistenceUnit("primaryPersistenceUnit")
                 .build();
     }

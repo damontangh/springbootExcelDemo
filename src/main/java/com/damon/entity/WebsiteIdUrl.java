@@ -1,6 +1,6 @@
-package com.damon.main.entity;
+package com.damon.entity;
 
-import com.damon.main.excelUtil.ExcelColumnAnnotation;
+import com.damon.excelUtil.ExcelColumnAnnotation;
 import lombok.Data;
 
 @Data
