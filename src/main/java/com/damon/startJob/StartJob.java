@@ -23,7 +23,7 @@ public class StartJob {
     @Autowired
     CompareWebUrlWithMysql compareWebUrlWithMysql;
 
-    @Scheduled(fixedDelay = 1000*1000)
+//    @Scheduled(fixedDelay = 1000*1000)
     public void run() throws Exception {
 //        String filePath = "C:\\Users\\lenovo\\Desktop\\modify\\查重.xls";
 //        String filepath = "C:\\Users\\lenovo\\Desktop\\compare\\媒体云第二批网站已收集部分-20180224.xlsx";
